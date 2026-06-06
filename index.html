@@ -857,6 +857,8 @@ html,body{overflow-x:hidden;background:var(--bg);}
       <div class="home-tagline">Training System</div>
     </div>
     <div class="home-divider"></div>
+    <!-- Streak Card -->
+    <div id="homeStreakCard" style="margin:0 1.25rem 1rem;"></div>
     <div class="home-grid">
       <div class="home-tile home-tile-plan" onclick="showPage('plan')">
         <div class="home-tile-icon">
@@ -922,6 +924,7 @@ html,body{overflow-x:hidden;background:var(--bg);}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
         <div id="splitTitle" class="split-title"></div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button id="streakPlanBtn" onclick="toggleStreakPlan()" title="Als Streak-Plan setzen" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:18px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;">☆</button>
           <button onclick="openShuffle()" title="Shuffle" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:18px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;">🔀</button>
           <button onclick="openLibOv('manage')" title="Bibliothek" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:18px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;">📚</button>
         </div>
@@ -1201,6 +1204,23 @@ html,body{overflow-x:hidden;background:var(--bg);}
       <div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.5;">Speichert alle deine Trainingsdaten (Gewichte, PRs, Protokoll, Pläne) als Datei. Vor jedem Cache-Leeren exportieren!</div>
       <button onclick="exportData()" style="width:100%;padding:.85rem;background:var(--accent3);border:1px solid #3a5020;border-radius:7px;color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;min-height:48px;">⬇ Export herunterladen</button>
     </div>
+    <!-- Plan-Only Transfer (PC ↔ Handy) -->
+    <div class="stretch-section-title">📋 Trainingsplan transferieren</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem;">Nur Plan exportieren</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.5;">Exportiert nur die Trainingspläne (ohne Historie, PRs, Videos). Ideal um den Plan am PC zu bearbeiten und dann wieder zu laden — alle Trainingsdaten bleiben unberührt.</div>
+      <button onclick="exportPlanOnly()" style="width:100%;padding:.85rem;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;min-height:48px;margin-bottom:.6rem;">⬇ Plan exportieren</button>
+      <label style="display:block;width:100%;padding:.85rem;background:#1a2030;border:1px solid #2a3a5a;border-radius:7px;color:#6aa5e8;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;min-height:48px;text-align:center;box-sizing:border-box;">
+        ⬆ Plan importieren
+        <input type="file" accept=".json" onchange="importPlanOnly(event)" style="display:none;" />
+      </label>
+    </div>
+    <!-- Plan History (Auto-Backup) -->
+    <div class="stretch-section-title">↺ Plan-Verlauf (Auto-Backup)</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.5;">Vor jeder Plan-Änderung (Shuffle, Bearbeitung, Import) wird automatisch eine Sicherung erstellt. Hier kannst du die letzten 10 Stände wiederherstellen.</div>
+      <div id="planHistList"></div>
+    </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem;">Daten importieren</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:.85rem;line-height:1.5;">Stellt deine gesicherten Daten wieder her. Achtung: überschreibt alle aktuellen Daten!</div>
@@ -1407,17 +1427,26 @@ html,body{overflow-x:hidden;background:var(--bg);}
 
 <!-- WARMUP SELECTION OVERLAY -->
 <div class="wup-overlay hidden" id="wupOverlay">
-  <div class="wup-box">
-    <div class="wup-title">🔥 Aufwärmen</div>
-    <div class="wup-sub">Womit möchtest du heute aufwärmen?</div>
-    <div class="wup-opts">
-      <div class="wup-opt selected" id="wupOptRowing" onclick="selectWup('rowing')">
+  <div class="wup-box" style="max-height:92vh;overflow-y:auto;">
+    <div class="wup-title">🔥 Aufwärmen &amp; Mobilität</div>
+    <div class="wup-sub">So startest du heute ins Training</div>
+    <div style="font-size:11px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:.6rem;margin-bottom:.4rem;">Cardio-Aufwärmen</div>
+    <div class="wup-opts" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div class="wup-opt selected" id="wupOptRowing" onclick="selectWup('rowing')" style="padding:.6rem;">
         <div class="wup-opt-icon">🚣</div>
-        <div><div class="wup-opt-title">Rudern</div><div class="wup-opt-sub">Ergometer · Ganzkörper-Aufwärmen</div></div>
+        <div><div class="wup-opt-title">Rudern</div><div class="wup-opt-sub">Ganzkörper</div></div>
       </div>
-      <div class="wup-opt" id="wupOptRunning" onclick="selectWup('running')">
+      <div class="wup-opt" id="wupOptRunning" onclick="selectWup('running')" style="padding:.6rem;">
         <div class="wup-opt-icon">🏃</div>
-        <div><div class="wup-opt-title">Laufen</div><div class="wup-opt-sub">Laufband / Draußen · Cardio-Aufwärmen</div></div>
+        <div><div class="wup-opt-title">Laufen</div><div class="wup-opt-sub">Cardio</div></div>
+      </div>
+      <div class="wup-opt" id="wupOptJumping" onclick="selectWup('jumping')" style="padding:.6rem;">
+        <div class="wup-opt-icon">🪢</div>
+        <div><div class="wup-opt-title">Seilspringen</div><div class="wup-opt-sub">HIIT</div></div>
+      </div>
+      <div class="wup-opt" id="wupOptCycling" onclick="selectWup('cycling')" style="padding:.6rem;">
+        <div class="wup-opt-icon">🚴</div>
+        <div><div class="wup-opt-title">Fahrrad</div><div class="wup-opt-sub">Beine schonend</div></div>
       </div>
     </div>
     <div class="wup-duration">
@@ -1425,8 +1454,10 @@ html,body{overflow-x:hidden;background:var(--bg);}
       <input type="range" class="wup-dur-input" id="wupDuration" min="5" max="20" step="1" value="10" oninput="document.getElementById('wupDurVal').textContent=this.value+' min'"/>
       <span class="wup-dur-val" id="wupDurVal">10 min</span>
     </div>
+    <div style="font-size:11px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:.6rem;margin-bottom:.4rem;">Mobilität &amp; Dehnen</div>
+    <div id="wupStretchInfo" style="margin-bottom:.75rem;"></div>
     <div class="wup-btns">
-      <button class="wup-skip" onclick="startTrainingDirect()">Überspringen</button>
+      <button class="wup-skip" onclick="startTrainingDirect()">Alles überspringen</button>
       <button class="wup-start" onclick="confirmWup()">▶ Los geht's</button>
     </div>
   </div>
@@ -1532,8 +1563,8 @@ html,body{overflow-x:hidden;background:var(--bg);}
 <div class="shuf-overlay hidden" id="shufOverlay">
   <div class="shuf-box">
     <div class="shuf-icon">🔀</div>
-    <div class="shuf-title">Neuer Trainingsplan</div>
-    <div class="shuf-desc">Wähle einen Split — die Übungen werden automatisch zusammengestellt.</div>
+    <div class="shuf-title" id="shufTitle">Neuer Trainingsplan</div>
+    <div class="shuf-desc" id="shufDesc">Wähle einen Split — die Übungen werden automatisch zusammengestellt.</div>
     <div class="shuf-options" id="shufOpts"></div>
     <div style="font-size:11px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem;margin-top:.75rem;">Trainingstyp pro Tag</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem;" id="shufTypeRow"></div>
@@ -1901,6 +1932,7 @@ function closeEditor(){
   if(wasOpen) navPopOverlay();
 }
 function saveAndClose(){
+  savePlanSnapshot('Vor Plan-Bearbeitung');
   SPLITS=deepClone(editDraft);
   heatmapActiveSplit=activeSplit;
   closeEditor();renderNav();renderDays();saveState();showToast('Plan gespeichert ✓');
@@ -2109,6 +2141,232 @@ function closeConfirm(){
   document.getElementById('confirmOverlay').classList.add('hidden');
 }
 
+var WEEKDAY_NAMES = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+var WEEKDAY_SHORT = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+
+// Active plan for streak calculation (separate from activeSplit which is currently viewed)
+var streakActivePlan = null;
+
+function getStreakPlan(){
+  if(streakActivePlan && SPLITS[streakActivePlan]){
+    // Verify it still has weekdays
+    var hasWd = SPLITS[streakActivePlan].days.some(function(d){ return getDayWeekday(d)!==null; });
+    if(hasWd) return streakActivePlan;
+  }
+  // Auto-detect: first split that has weekdays assigned
+  for(var k in SPLITS){
+    if(SPLITS[k].days.some(function(d){ return getDayWeekday(d)!==null; })) return k;
+  }
+  return null;
+}
+
+function setStreakPlan(k){
+  if(!SPLITS[k]) return;
+  streakActivePlan = k;
+  saveState();
+  renderHomeStreak();
+  renderNav();
+  renderDays();
+  if(document.getElementById('histPage') && document.getElementById('histPage').classList.contains('active')) renderCal();
+  showToast('✓ Aktiver Streak-Plan: '+SPLITS[k].name);
+}
+
+// Convert JS getDay() (0=Sun..6=Sat) to ISO weekday (0=Mon..6=Sun)
+function jsDowToIso(jsDow){ return jsDow===0 ? 6 : jsDow-1; }
+
+function getDayWeekday(day){
+  return (day && typeof day.weekday==='number' && day.weekday>=0 && day.weekday<=6) ? day.weekday : null;
+}
+
+function setDayWeekday(dayObj, wd){
+  if(wd===null || wd===undefined || wd<0 || wd>6){
+    delete dayObj.weekday;
+  } else {
+    dayObj.weekday = wd;
+    dayObj.name = WEEKDAY_NAMES[wd];
+  }
+}
+
+// Get unique set of planned weekdays from STREAK plan (not the currently viewed plan)
+function getPlannedWeekdays(){
+  var key = getStreakPlan();
+  if(!key) return [];
+  var s = SPLITS[key];
+  if(!s) return [];
+  var set = {};
+  s.days.forEach(function(d){
+    if((d.tags||[]).indexOf('rest')!==-1) return;
+    var w = getDayWeekday(d);
+    if(w!==null) set[w] = true;
+  });
+  return Object.keys(set).map(function(k){return parseInt(k);}).sort();
+}
+
+// Check if there was a training on a specific date (YYYY-MM-DD)
+function _wasTrainedOn(dateStr){
+  for(var i=0;i<trainingLog.length;i++){
+    var d = new Date(trainingLog[i].date);
+    var s = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(s===dateStr) return true;
+  }
+  return false;
+}
+
+function _dateToStr(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Core streak calculation
+// Returns: { streak, tokens, history[last 14 days: {date, type: 'flame'|'ice'|'miss'|'norest'|'future', label}] }
+function calcStreak(){
+  return _calcStreakInternal(7);
+}
+
+// Get all streak days from beginning of training history to today (for calendar)
+function calcStreakFullHistory(){
+  return _calcStreakInternal(null); // null = all days
+}
+
+function _calcStreakInternal(historyLimit){
+  var planned = getPlannedWeekdays();
+  if(planned.length===0){
+    return { streak:0, tokens:0, history:[], planned:[], hasPlan:false };
+  }
+
+  // Find earliest possible start date: 2 weeks before first training log entry, or 4 weeks before today
+  var today = new Date(); today.setHours(0,0,0,0);
+  var startDate;
+  if(trainingLog.length>0){
+    var minDate = new Date(trainingLog.reduce(function(min,e){ return e.date < min ? e.date : min; }, trainingLog[0].date));
+    minDate.setHours(0,0,0,0);
+    // start at Monday of the week of first training, but at most 12 weeks back
+    var maxBack = new Date(today); maxBack.setDate(today.getDate()-84);
+    startDate = minDate < maxBack ? maxBack : minDate;
+    // Snap to Monday
+    startDate.setDate(startDate.getDate() - jsDowToIso(startDate.getDay()));
+  } else {
+    startDate = new Date(today);
+    startDate.setDate(today.getDate() - jsDowToIso(today.getDay())); // this Monday
+  }
+
+  // Walk day by day from startDate to today
+  // Track: streak counter, tokens (=eligible ice blocks earned), tokens used, and per-day result
+  var streak = 0;
+  var tokens = 0;
+  var consecutiveCompleteWeeks = 0;
+  var currentWeekRequiredPlanned = []; // weekdays we still need this week
+  var currentWeekOk = true;
+  var dayResults = []; // {date, dateStr, weekday, type}
+
+  var cur = new Date(startDate);
+  while(cur <= today){
+    var iso = jsDowToIso(cur.getDay());
+    var dateStr = _dateToStr(cur);
+    var isPlanned = planned.indexOf(iso) !== -1;
+    var trained = isPlanned ? _wasTrainedOn(dateStr) : false;
+
+    var entry = { date: new Date(cur), dateStr: dateStr, weekday: iso, type: 'norest' };
+    if(isPlanned){
+      if(trained){
+        entry.type = 'flame';
+        streak++;
+        // remove from this week's required
+        var idx = currentWeekRequiredPlanned.indexOf(iso);
+        if(idx>=0) currentWeekRequiredPlanned.splice(idx,1);
+      } else {
+        // Plan day missed
+        if(tokens>0){
+          // Burn a token to keep the streak
+          tokens--;
+          entry.type = 'ice';
+          streak++; // keep streak going
+          var idx2 = currentWeekRequiredPlanned.indexOf(iso);
+          if(idx2>=0) currentWeekRequiredPlanned.splice(idx2,1);
+        } else {
+          entry.type = 'miss';
+          streak = 0;
+          currentWeekOk = false;
+        }
+      }
+    }
+    dayResults.push(entry);
+
+    // End of week check (Sunday = iso 6)
+    if(iso===6){
+      // If this week's planned days were all done (no remaining required), and no miss happened
+      if(currentWeekOk && currentWeekRequiredPlanned.length===0){
+        consecutiveCompleteWeeks++;
+        if(consecutiveCompleteWeeks>=2){
+          tokens++;
+          consecutiveCompleteWeeks = 0; // reset counter, earn 1 ice per 2 complete weeks
+        }
+      } else {
+        consecutiveCompleteWeeks = 0;
+      }
+      currentWeekOk = true;
+    }
+    // At the start of a new week (Monday = iso 0), refill the required set
+    if(iso===0 || cur.getTime()===startDate.getTime()){
+      currentWeekRequiredPlanned = planned.slice();
+      // Subtract any already trained today
+      if(isPlanned && (trained || entry.type==='ice')){
+        var idx3 = currentWeekRequiredPlanned.indexOf(iso);
+        if(idx3>=0) currentWeekRequiredPlanned.splice(idx3,1);
+      }
+    }
+
+    cur.setDate(cur.getDate()+1);
+  }
+
+  // History: last N days (default 7) or all if null
+  var history = historyLimit ? dayResults.slice(-historyLimit) : dayResults;
+
+  return { streak:streak, tokens:tokens, history:history, planned:planned, hasPlan:true };
+}
+
+function renderHomeStreak(){
+  var el = document.getElementById('homeStreakCard');
+  if(!el) return;
+  var s = calcStreak();
+  if(!s.hasPlan){
+    el.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;font-size:12px;color:var(--muted);line-height:1.5;">'
+      +'💡 Weise deinen Trainingstagen Wochentage zu (im Plan-Editor), um deine Streak zu sehen.'
+      +'</div>';
+    return;
+  }
+  // Build 14-day history visual
+  var symHtml = '';
+  s.history.forEach(function(d){
+    var sym, color, bg;
+    if(d.type==='flame'){ sym='🔥'; }
+    else if(d.type==='ice'){ sym='❄️'; }
+    else if(d.type==='miss'){ sym='✕'; color='var(--muted3)'; }
+    else { sym='·'; color='var(--muted3)'; }
+    var todayStr = _dateToStr(new Date());
+    var isToday = d.dateStr===todayStr;
+    var dayLbl = WEEKDAY_SHORT[d.weekday];
+    symHtml += '<div style="flex:1;min-width:0;text-align:center;padding:.3rem .15rem;border-radius:5px;'
+      +(isToday?'background:var(--bg3);border:1px solid var(--accent2);':'')+'">'
+      +'<div style="font-size:14px;line-height:1;height:18px;display:flex;align-items:center;justify-content:center;color:'+(color||'inherit')+';">'+sym+'</div>'
+      +'<div style="font-size:9px;color:var(--muted3);margin-top:2px;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.04em;">'+dayLbl+'</div>'
+      +'</div>';
+  });
+  el.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">'
+    +'<div style="display:flex;align-items:center;gap:.5rem;">'
+    +'<span style="font-size:22px;">🔥</span>'
+    +'<div><div style="font-family:\'Cormorant Garamond\',serif;font-size:22px;font-weight:600;color:var(--text);line-height:1;">'+s.streak+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.06em;text-transform:uppercase;">Streak</div></div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:.4rem;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:.35rem .6rem;">'
+    +'<span style="font-size:16px;">❄️</span>'
+    +'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--text2);">'+s.tokens+'</span>'
+    +'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:2px;">'+symHtml+'</div>'
+    +'</div>';
+}
+
 function renderEditExList(){
   var day=editDraft[editSk].days[editDi];
   if(!day||!day.main){document.getElementById('editExList').innerHTML='<div style="color:var(--muted3);font-size:13px;">Ruhetag</div>';return;}
@@ -2125,12 +2383,37 @@ function addExerciseManual(){
   renderEditExList();
 }
 // ── WARMUP SELECTION ──
-var selectedWupType = 'rowing'; // 'rowing' | 'running'
+var selectedWupType = 'rowing'; // 'rowing' | 'running' | 'jumping' | 'cycling'
 
 function selectWup(type) {
   selectedWupType = type;
-  document.getElementById('wupOptRowing').classList.toggle('selected', type === 'rowing');
-  document.getElementById('wupOptRunning').classList.toggle('selected', type === 'running');
+  ['rowing','running','jumping','cycling'].forEach(function(t){
+    var el = document.getElementById('wupOpt'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el) el.classList.toggle('selected', type===t);
+  });
+}
+
+// Show automatic stretch routine for today's weekday
+function renderWupStretchInfo(){
+  var container = document.getElementById('wupStretchInfo');
+  if(!container) return;
+  var todayWd = jsDowToIso(new Date().getDay());
+  var idx = getStretchRoutineForWeekday(todayWd);
+  if(idx < 0){
+    container.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:.55rem .75rem;display:flex;align-items:center;gap:10px;">'
+      +'<div style="font-size:18px;color:var(--muted3);">⊘</div>'
+      +'<div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;color:var(--muted);">Keine Routine für '+WEEKDAY_NAMES[todayWd]+'</div>'
+      +'<div style="font-size:10px;color:var(--muted3);">Weise auf der Dehnen-Seite eine Routine zu</div></div>'
+      +'</div>';
+    return;
+  }
+  var r = stretchRoutines[idx];
+  var exCount = (r.exIds||[]).length;
+  container.innerHTML = '<div style="background:var(--accent2);border:1px solid var(--accent);border-radius:7px;padding:.55rem .75rem;display:flex;align-items:center;gap:10px;">'
+    +'<div style="font-size:18px;">🧘</div>'
+    +'<div style="flex:1;min-width:0;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;letter-spacing:.03em;color:var(--accent);">'+escapeHtml(r.name||'Routine')+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);">'+exCount+' Übung'+(exCount===1?'':'en')+' · '+(r.holdSec||45)+' Sek halten · '+WEEKDAY_NAMES[todayWd]+'</div></div>'
+    +'</div>';
 }
 
 function openTraining(){
@@ -2138,10 +2421,13 @@ function openTraining(){
   if(!day.main||!day.main.length) return;
   // Show warmup selection first
   selectedWupType = 'rowing';
-  document.getElementById('wupOptRowing').classList.add('selected');
-  document.getElementById('wupOptRunning').classList.remove('selected');
+  ['rowing','running','jumping','cycling'].forEach(function(t){
+    var el = document.getElementById('wupOpt'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el) el.classList.toggle('selected', t==='rowing');
+  });
   document.getElementById('wupDuration').value = 10;
   document.getElementById('wupDurVal').textContent = '10 min';
+  renderWupStretchInfo();
   document.getElementById('wupOverlay').classList.remove('hidden');
   navPushOverlay(function(){ document.getElementById('wupOverlay').classList.add('hidden'); });
 }
@@ -2198,7 +2484,10 @@ function confirmWup(){
   wv.classList.add('hidden');
   if(wasOpen) navPopOverlay();
   var dur = parseInt(document.getElementById('wupDuration').value) || 10;
-  startTrainingWithWarmup(selectedWupType, dur);
+  // Auto-pick stretch routine for today's weekday
+  var todayWd = jsDowToIso(new Date().getDay());
+  var stretchIdx = getStretchRoutineForWeekday(todayWd);
+  startTrainingWithWarmup(selectedWupType, dur, stretchIdx);
 }
 
 function startTrainingDirect(){
@@ -2206,25 +2495,63 @@ function startTrainingDirect(){
   var wasOpen = !wv.classList.contains('hidden');
   wv.classList.add('hidden');
   if(wasOpen) navPopOverlay();
-  startTrainingWithWarmup(null, 0);
+  startTrainingWithWarmup(null, 0, -1);
 }
 
-function startTrainingWithWarmup(wupType, dur){
+// Track timing per phase
+var trainPhaseStart = 0;
+var trainWarmupDur = 0;
+var trainStretchDur = 0;
+var trainCurrentPhase = null;
+
+function startTrainingWithWarmup(wupType, dur, stretchIdx){
   currentSk=activeSplit; currentDi=activeDay;
   trainStartTime = Date.now();
-  trainSteps=buildSteps(activeSplit, activeDay, wupType, dur);
+  trainPhaseStart = Date.now();
+  trainWarmupDur = 0;
+  trainStretchDur = 0;
+  trainCurrentPhase = null;
+  trainSteps=buildSteps(activeSplit, activeDay, wupType, dur, stretchIdx);
   trainIdx=0;
   document.getElementById('trainOverlay').classList.remove('hidden');
   navPushOverlay(closeTraining);
   renderStep();
 }
 
-function buildSteps(sk, di, wupType, wupDur){
+function getStepPhase(step){
+  if(!step) return null;
+  if(step.type==='warmup') return 'warmup';
+  if(step.type==='stretch_intro' || step.type==='stretch_ex' || step.type==='stretch_rest') return 'stretch';
+  if(step.type==='finish') return 'finish';
+  return 'main';
+}
+
+function buildSteps(sk, di, wupType, wupDur, stretchIdx){
   var day=SPLITS[sk].days[di], steps=[];
-  // Add warmup step at start if selected
+  // Phase 1: Cardio Warmup
   if(wupType){
     steps.push({type:'warmup', wupType:wupType, wupDur:wupDur||10, sk:sk, di:di});
   }
+  // Phase 2: Stretch/Mobility
+  if(stretchIdx!==null && stretchIdx>=0 && stretchRoutines[stretchIdx]){
+    var r = stretchRoutines[stretchIdx];
+    var exs = (r.exIds||[]).map(function(id){
+      return STRETCH_DB.find(function(x){ return x.id===id; });
+    }).filter(Boolean);
+    if(exs.length){
+      var holdSec = r.holdSec || 45;
+      steps.push({type:'stretch_intro', routineName:r.name, totalEx:exs.length, holdSec:holdSec});
+      exs.forEach(function(e, idx){
+        if(e.sides){
+          steps.push({type:'stretch_ex', ex:e, side:'Links', holdSec:holdSec, stepIdx:idx, total:exs.length});
+          steps.push({type:'stretch_ex', ex:e, side:'Rechts', holdSec:holdSec, stepIdx:idx, total:exs.length});
+        } else {
+          steps.push({type:'stretch_ex', ex:e, side:null, holdSec:holdSec, stepIdx:idx, total:exs.length});
+        }
+      });
+    }
+  }
+  // Phase 3: Strength Training
   for(var ei=0;ei<day.main.length;ei++){
     var ex=day.main[ei],nSets=ex.sets;
     steps.push({type:'newex',ex:ex,ei:ei,sk:sk,di:di});
@@ -2242,6 +2569,25 @@ function skipWarmup(){
 }
 
 var wupTimer = null;
+var stretchExTimer = null;
+
+function startStretchTimer(totalSec){
+  if(stretchExTimer){ clearInterval(stretchExTimer); stretchExTimer=null; }
+  var remaining = totalSec;
+  function update(){
+    var el = document.getElementById('stretchCount');
+    if(!el){ clearInterval(stretchExTimer); stretchExTimer=null; return; }
+    el.textContent = remaining;
+    if(remaining<=0){
+      clearInterval(stretchExTimer); stretchExTimer=null;
+      nextStep();
+      return;
+    }
+    remaining--;
+  }
+  update();
+  stretchExTimer = setInterval(update, 1000);
+}
 function startWarmupTimer(totalSec){
   if(wupTimer){ clearInterval(wupTimer); wupTimer=null; }
   var remaining = totalSec;
@@ -2348,7 +2694,23 @@ function updateExBar(){
   var cur=document.getElementById('exbtn_'+curEi);
   if(cur)setTimeout(function(){cur.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});},50);
 }
-function nextStep(){if(pauseTimer){clearInterval(pauseTimer);pauseTimer=null;}if(trainIdx<trainSteps.length-1){trainIdx++;renderStep();}}
+function nextStep(){
+  if(pauseTimer){clearInterval(pauseTimer);pauseTimer=null;}
+  // Phase transition tracking
+  var oldStep = trainSteps[trainIdx];
+  var oldPhase = getStepPhase(oldStep);
+  if(trainIdx<trainSteps.length-1){
+    trainIdx++;
+    var newPhase = getStepPhase(trainSteps[trainIdx]);
+    if(oldPhase !== newPhase && oldPhase !== null){
+      var dur = Math.round((Date.now() - trainPhaseStart) / 1000);
+      if(oldPhase === 'warmup') trainWarmupDur += dur;
+      else if(oldPhase === 'stretch') trainStretchDur += dur;
+      trainPhaseStart = Date.now();
+    }
+    renderStep();
+  }
+}
 function prevStep(){
   if(pauseTimer){clearInterval(pauseTimer);pauseTimer=null;}
   if(trainIdx>0){trainIdx--;renderStep();}
@@ -2357,17 +2719,27 @@ function completeSet(){
   var step=trainSteps[trainIdx];
   if(step&&step.type==='exercise'){
     onSetResult(step.sk,step.di,step.ei,true);
-    // Check PR on last set of the exercise
+    // Check PR only on last set — and only if ALL sets were fully completed
     if(step.setNum===step.totalSets){
       var ex=SPLITS[step.sk].days[step.di].main[step.ei];
       if(ex){
-        var reps=parseReps(ex.reps);
+        // Check successLog: the last totalSets entries must all be 1 (no skips)
         var bi=ex.bi!==false;
-        var wL=getW(step.sk,step.di,step.ei,'L');
-        var wR=getW(step.sk,step.di,step.ei,'R');
-        var wS=getW(step.sk,step.di,step.ei,'S');
-        var isNew=checkAndUpdatePR(ex.name,ex.icon,bi,wL,wR,wS,reps);
-        if(isNew) setTimeout(function(){ showPRToast(ex.name, prs[getPRKey(ex.name)].orm); },400);
+        var sides=bi?['L','R']:['S'];
+        var allFullyDone=sides.every(function(side){
+          var k=sLogKey(step.sk,step.di,step.ei,side);
+          var log=successLog[k]||[];
+          var lastN=log.slice(-step.totalSets);
+          return lastN.length===step.totalSets && lastN.every(function(v){return v===1;});
+        });
+        if(allFullyDone){
+          var reps=parseReps(ex.reps);
+          var wL=getW(step.sk,step.di,step.ei,'L');
+          var wR=getW(step.sk,step.di,step.ei,'R');
+          var wS=getW(step.sk,step.di,step.ei,'S');
+          var isNew=checkAndUpdatePR(ex.name,ex.icon,bi,wL,wR,wS,reps);
+          if(isNew) setTimeout(function(){ showPRToast(ex.name, prs[getPRKey(ex.name)].orm); },400);
+        }
       }
     }
   }
@@ -2460,13 +2832,18 @@ function renderStep(){
   updateExBar();
   var body=document.getElementById('tBody');
   if(step.type==='warmup'){
-    var icon = step.wupType==='rowing' ? '🚣' : '🏃';
-    var name = step.wupType==='rowing' ? 'Rudern' : 'Laufen';
+    var wupMap = {
+      rowing: {icon:'🚣', name:'Rudern'},
+      running:{icon:'🏃', name:'Laufen'},
+      jumping:{icon:'🪢', name:'Seilspringen'},
+      cycling:{icon:'🚴', name:'Fahrrad'}
+    };
+    var w = wupMap[step.wupType] || wupMap.rowing;
     var totalSec = (step.wupDur || 10) * 60;
     var mins = step.wupDur || 10;
     body.innerHTML='<div class="t-pause-card">'
       +'<div class="nea-label" style="margin-bottom:.5rem;">Aufwärmen</div>'
-      +'<div class="nea-name" style="font-size:28px;margin-bottom:.5rem;">'+icon+' '+name+'</div>'
+      +'<div class="nea-name" style="font-size:28px;margin-bottom:.5rem;">'+w.icon+' '+w.name+'</div>'
       +'<div class="pause-lbl">Verbleibende Zeit</div>'
       +'<div class="pause-num" id="wupCount">'+mins+':00</div>'
       +'<div class="pause-next-lbl">Tempo</div>'
@@ -2477,6 +2854,38 @@ function renderStep(){
       +'<button class="btn-ready" onclick="skipWarmup()" style="margin-top:1rem;">✓ Fertig → Weiter</button>'
       +'</div>';
     startWarmupTimer(totalSec);
+    return;
+  } else if(step.type==='stretch_intro'){
+    body.innerHTML='<div class="new-ex-announce">'
+      +'<div class="nea-label">Phase 2</div>'
+      +'<div class="nea-divider"></div>'
+      +'<div class="nea-name" style="font-size:26px;">🧘 Mobilität &amp; Dehnen</div>'
+      +'<div class="nea-muscle">'+escapeHtml(step.routineName||'Routine')+' · '+step.totalEx+' Übung'+(step.totalEx===1?'':'en')+'</div>'
+      +'<div class="nea-meta"><span class="nea-pill nea-pill-s">'+step.holdSec+' Sek halten</span></div>'
+      +'<button class="btn-ready" onclick="nextStep()" style="margin-top:.75rem;">Los geht\'s →</button>'
+      +'</div>';
+    return;
+  } else if(step.type==='stretch_ex'){
+    var sideText = step.side ? ' ('+step.side+')' : '';
+    var iconHtml = step.ex.icon ? step.ex.icon+' ' : '🧘 ';
+    var photoHtml = '';
+    // Try to find photo if available
+    if(step.ex.photo){
+      photoHtml = '<div style="margin:.5rem auto;max-width:240px;"><img src="'+step.ex.photo+'" alt="" style="width:100%;border-radius:8px;display:block;" /></div>';
+    }
+    body.innerHTML='<div class="t-pause-card">'
+      +'<div class="nea-label" style="margin-bottom:.5rem;">Übung '+(step.stepIdx+1)+' von '+step.total+'</div>'
+      +'<div class="nea-name" style="font-size:22px;margin-bottom:.4rem;">'+iconHtml+escapeHtml(step.ex.name)+sideText+'</div>'
+      +photoHtml
+      +'<div class="pause-lbl">Halten</div>'
+      +'<div class="pause-num" id="stretchCount">'+step.holdSec+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:.5rem;">Sekunden</div>'
+      +'<div class="pause-settings-row" style="margin-top:.75rem;">'
+      +'<button class="pause-preset" onclick="nextStep()">Überspringen</button>'
+      +'</div>'
+      +'<button class="btn-ready" onclick="nextStep()" style="margin-top:1rem;">✓ Fertig → Weiter</button>'
+      +'</div>';
+    startStretchTimer(step.holdSec);
     return;
   } else if(step.type==='newex'){
     var ex=step.ex,ei=step.ei,sk=step.sk,di=step.di;
@@ -2742,12 +3151,23 @@ var trainingLog = [];
 function saveTrainingToLog(sk, di){
   var day = SPLITS[sk].days[di];
   var durMin = trainStartTime ? Math.round((Date.now() - trainStartTime) / 60000) : 0;
+  // Finalize current phase duration in case the user finished during a phase
+  var finalPhase = getStepPhase(trainSteps[trainIdx]);
+  if(finalPhase && trainPhaseStart){
+    var finalDur = Math.round((Date.now() - trainPhaseStart) / 1000);
+    if(finalPhase === 'warmup') trainWarmupDur += finalDur;
+    else if(finalPhase === 'stretch') trainStretchDur += finalDur;
+  }
+  var warmupMin = Math.round(trainWarmupDur / 60);
+  var stretchMin = Math.round(trainStretchDur / 60);
   var entry = {
     date: new Date().toISOString(),
     sk: sk, di: di,
     dayName: day.name,
     splitName: SPLITS[sk].name,
     duration: durMin,
+    warmupDur: warmupMin,
+    stretchDur: stretchMin,
     note: '',
     exs: day.main.map(function(ex, ei){
       return {
@@ -2759,6 +3179,10 @@ function saveTrainingToLog(sk, di){
   trainingLog.push(entry);
   // keep max 90 entries
   if(trainingLog.length > 90) trainingLog = trainingLog.slice(-90);
+  // Reset trackers
+  trainWarmupDur = 0;
+  trainStretchDur = 0;
+  trainPhaseStart = 0;
 }
 
 // ── PAGE SWITCHING ──
@@ -2879,7 +3303,8 @@ function showPage(page){
   if(page==='stat'){ renderStatPage(); }
   if(page==='stretch'){ renderStretchPage(); }
   if(page==='video'){ renderVideoPage(); }
-  if(page==='settings'){ renderSettingsInfo(); loadGhTokenStatus(); }
+  if(page==='settings'){ renderSettingsInfo(); loadGhTokenStatus(); renderPlanHistory(); }
+  if(page==='home'){ renderHomeStreak(); }
   // Navigation tracking
   _currentPage = page;
   navPushPage(page);
@@ -3342,20 +3767,29 @@ function renderWeek(preserveScroll){
   document.getElementById('weekInner').innerHTML = cells;
 
   // Scroll to today only on initial load, otherwise restore saved position
-  setTimeout(function(){
+  function _doScrollToToday(retries){
     var wrap = document.getElementById('weekWrap');
     if(!wrap) return;
     if(savedScroll !== null){
       wrap.scrollLeft = savedScroll;
-    } else {
-      var todayEl = document.getElementById('weekToday');
-      if(todayEl){
-        var cellW = todayEl.offsetWidth;
-        var wrapW = wrap.offsetWidth;
-        wrap.scrollLeft = todayEl.offsetLeft - (wrapW / 2) + (cellW / 2);
-      }
+      return;
     }
-  }, 30);
+    var todayEl = document.getElementById('weekToday');
+    if(!todayEl) return;
+    var wrapW = wrap.offsetWidth;
+    var cellW = todayEl.offsetWidth;
+    // If layout not ready yet, retry up to 10 times
+    if((wrapW === 0 || cellW === 0) && retries < 10){
+      setTimeout(function(){ _doScrollToToday(retries+1); }, 60);
+      return;
+    }
+    if(wrapW > 0 && cellW > 0){
+      wrap.scrollLeft = todayEl.offsetLeft - (wrapW / 2) + (cellW / 2);
+    }
+  }
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ _doScrollToToday(0); });
+  });
 }
 
 function formatDate(iso){
@@ -3416,6 +3850,16 @@ function renderCal(){
       actDates[day].push(e);
     }
   });
+  // Build streak day map for this month
+  var streakDays = {};
+  var streakRes = calcStreakFullHistory();
+  if(streakRes.hasPlan){
+    streakRes.history.forEach(function(d){
+      if(d.date.getFullYear()===calYear && d.date.getMonth()===calMonth2){
+        streakDays[d.date.getDate()] = d.type;
+      }
+    });
+  }
   var html = ['Mo','Di','Mi','Do','Fr','Sa','So'].map(function(d){
     return '<div class="cal-day-hdr">'+d+'</div>';
   }).join('');
@@ -3457,7 +3901,17 @@ function renderCal(){
     var selDateStr = calYear+'-'+String(calMonth2+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     var isSelected = _selectedDayStr === selDateStr;
     var cls = 'cal-day'+(isToday?' today':'')+((hasTrain||hasAct)?' has-training':'')+(isChangeDay?' change-day':'')+(isSelected?' cal-selected':'');
-    html += '<div class="'+cls+'"'+onclick+style+'>'+day+(isChangeDay?'<span style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;">🔄</span>':'')+'</div>';
+    // Streak symbol for this day
+    var streakSym = '';
+    if(streakDays[day]){
+      var st = streakDays[day];
+      var sym='';
+      if(st==='flame') sym='🔥';
+      else if(st==='ice') sym='❄️';
+      else if(st==='miss') sym='✕';
+      if(sym) streakSym = '<span style="position:absolute;top:1px;right:2px;font-size:9px;line-height:1;">'+sym+'</span>';
+    }
+    html += '<div class="'+cls+'"'+onclick+style+'>'+day+streakSym+(isChangeDay?'<span style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;">🔄</span>':'')+'</div>';
   }
   document.getElementById('calGrid').innerHTML = html;
 }
@@ -3831,11 +4285,24 @@ function renderLog(highlightDate){
       var w = ex.bi ? ex.wL+' / '+ex.wR+' kg' : ex.wS+' kg';
       return ex.icon+' '+ex.name+' — '+w;
     }).join('<br>');
+    // Phase breakdown (warmup + stretch)
+    var phaseHtml = '';
+    if(e.warmupDur || e.stretchDur){
+      var parts = [];
+      if(e.warmupDur) parts.push('🔥 Aufwärmen '+e.warmupDur+' min');
+      if(e.stretchDur) parts.push('🧘 Dehnen '+e.stretchDur+' min');
+      if(e.duration){
+        var strengthDur = Math.max(0, e.duration - (e.warmupDur||0) - (e.stretchDur||0));
+        if(strengthDur) parts.push('💪 Training '+strengthDur+' min');
+      }
+      phaseHtml = '<div style="font-size:11px;color:var(--muted);margin-top:.25rem;">'+parts.join(' · ')+'</div>';
+    }
     return '<div class="log-entry">'
       +'<div class="log-entry-head">'
       +'<div class="log-entry-date">'+e.splitName+' · '+e.dayName+'</div>'
       +'<div class="log-entry-plan">'+formatTime(e.date)+(e.duration?' · ⏱ '+e.duration+' min':'')+'</div>'
       +'</div>'
+      +phaseHtml
       +'<div class="log-entry-exs">'+exList+'</div>'
       +'</div>';
   }).join('');
@@ -5244,22 +5711,46 @@ function getExercisesForCats(cats, count, usedNames) {
   return pool.slice(0, count).map(makeExObj);
 }
 
-function openShuffle() {
+var _shufMode = 'plan'; // 'plan' = all days, 'day' = only current day
+
+function openShuffle(mode) {
+  _shufMode = mode === 'day' ? 'day' : 'plan';
   shufSelectedSplit = activeSplit;
   _shufDayType = 'full';
   _shufDayMg = 'all';
-  var html = '';
-  Object.keys(SPLITS).forEach(function(k) {
-    var sp = SPLITS[k];
-    var trainDays = sp.days.filter(function(d){ return d.tags.indexOf('rest') === -1; }).length;
-    var sel = k === shufSelectedSplit;
-    html += '<div class="shuf-opt'+(sel?' selected':'')+'" onclick="selectShufSplit(\''+k+'\')">'+
-      '<div class="shuf-opt-dot"></div>'+
-      '<div><div class="shuf-opt-text">'+sp.name+'</div>'+
-      '<div class="shuf-opt-sub">'+trainDays+' Trainingstage</div></div>'+
-      '</div>';
-  });
-  document.getElementById('shufOpts').innerHTML = html;
+
+  // Adjust title/desc based on mode
+  if(_shufMode === 'day'){
+    var dayName = SPLITS[activeSplit].days[activeDay].name || ('Tag '+(activeDay+1));
+    document.getElementById('shufTitle').textContent = 'Tag neu würfeln';
+    document.getElementById('shufDesc').textContent = 'Nur "'+dayName+'" wird neu zusammengestellt — die anderen Tage bleiben unverändert.';
+    // Hide split selection (only current split is relevant)
+    document.getElementById('shufOpts').innerHTML = '';
+    document.getElementById('shufOpts').style.display = 'none';
+    // Pre-fill exercise count from current day
+    var curDay = SPLITS[activeSplit].days[activeDay];
+    var curCount = (curDay.main && curDay.main.length) ? curDay.main.length : 6;
+    if(curCount < 4) curCount = 4;
+    if(curCount > 15) curCount = 15;
+    document.getElementById('shufCount').value = curCount;
+    document.getElementById('shufCountVal').textContent = curCount;
+  } else {
+    document.getElementById('shufTitle').textContent = 'Neuer Trainingsplan';
+    document.getElementById('shufDesc').textContent = 'Wähle einen Split — die Übungen werden automatisch zusammengestellt.';
+    document.getElementById('shufOpts').style.display = '';
+    var html = '';
+    Object.keys(SPLITS).forEach(function(k) {
+      var sp = SPLITS[k];
+      var trainDays = sp.days.filter(function(d){ return d.tags.indexOf('rest') === -1; }).length;
+      var sel = k === shufSelectedSplit;
+      html += '<div class="shuf-opt'+(sel?' selected':'')+'" onclick="selectShufSplit(\''+k+'\')">'+
+        '<div class="shuf-opt-dot"></div>'+
+        '<div><div class="shuf-opt-text">'+sp.name+'</div>'+
+        '<div class="shuf-opt-sub">'+trainDays+' Trainingstage</div></div>'+
+        '</div>';
+    });
+    document.getElementById('shufOpts').innerHTML = html;
+  }
   renderShufDayUI();
   document.getElementById('shufOverlay').classList.remove('hidden');
 }
@@ -5281,11 +5772,10 @@ function doShuffle() {
   var sk = shufSelectedSplit || activeSplit;
   var count = parseInt(document.getElementById('shufCount').value) || 6;
   var split = SPLITS[sk];
-  var usedNames = [];
 
-  split.days.forEach(function(day) {
+  // Inner helper to shuffle a single day
+  function shuffleOneDay(day, usedNames){
     if (day.tags.indexOf('rest') !== -1) return;
-    // Apply chosen type
     var tmpDay = {tags: [_shufDayType], main: day.main};
     var slots;
     if(_shufDayMg !== 'all'){
@@ -5306,16 +5796,44 @@ function doShuffle() {
     if(result.length < count) result = result.concat(buildStructuredDay(tmpDay, count-result.length, localUsed));
     day.main = result.slice(0, count);
     day.main.forEach(function(e){ usedNames.push(e.name); });
-  });
+  }
 
-  closeShuffle();
-  activeSplit = sk;
-  activeDay = 0;
-  detailEditMode = false;
-  saveState();
-  renderNav();
-  renderDays();
-  showToast('🔀 Neuer Plan generiert!');
+  if(_shufMode === 'day'){
+    // Only shuffle the active day
+    var targetDay = SPLITS[activeSplit].days[activeDay];
+    if(targetDay.tags && targetDay.tags.indexOf('rest') !== -1){
+      showToast('Ruhetage können nicht gewürfelt werden');
+      return;
+    }
+    savePlanSnapshot('Vor Tag-Shuffle');
+    // Use other days' exercises as "used" to avoid duplicates within the plan
+    var usedNames = [];
+    SPLITS[activeSplit].days.forEach(function(d, idx){
+      if(idx !== activeDay && d.main){
+        d.main.forEach(function(e){ usedNames.push(e.name); });
+      }
+    });
+    shuffleOneDay(targetDay, usedNames);
+    closeShuffle();
+    detailEditMode = false;
+    saveState();
+    renderNav();
+    renderDays();
+    showToast('🔀 Tag neu zusammengestellt!');
+  } else {
+    // Plan mode — shuffle all days
+    savePlanSnapshot('Vor Plan-Shuffle');
+    var usedNames2 = [];
+    split.days.forEach(function(day) { shuffleOneDay(day, usedNames2); });
+    closeShuffle();
+    activeSplit = sk;
+    activeDay = 0;
+    detailEditMode = false;
+    saveState();
+    renderNav();
+    renderDays();
+    showToast('🔀 Neuer Plan generiert!');
+  }
 }
 
 // ── DEHNEN / STRETCH ──
@@ -5575,9 +6093,22 @@ function renderStretchRoutines() {
       var e = STRETCH_DB.find(function(x){ return x.id===id; });
       return acc + (r.holdSec||30) * (e&&e.sides?2:1) / 60;
     }, 0));
+    // Build weekday selector
+    var wdHtml = '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:.5rem;margin-bottom:.5rem;">';
+    var assignedWds = r.weekdays || [];
+    for(var w=0; w<7; w++){
+      var act = assignedWds.indexOf(w)!==-1;
+      wdHtml += '<button onclick="toggleStretchRoutineWeekday('+ri+','+w+')" style="flex:1;min-width:32px;padding:.3rem .2rem;font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:5px;cursor:pointer;min-height:30px;'
+        +'border:1px solid '+(act?'var(--accent)':'var(--border2)')+';'
+        +'background:'+(act?'var(--accent2)':'var(--bg3)')+';'
+        +'color:'+(act?'var(--accent)':'var(--muted)')+';">'
+        +WEEKDAY_SHORT[w]+'</button>';
+    }
+    wdHtml += '</div>';
     return '<div class="stretch-routine-card">'
       +'<div class="stretch-routine-name">'+r.name+'</div>'
       +'<div class="stretch-routine-meta">'+r.exIds.length+' Übungen · ca. '+totalMin+' min · '+r.holdSec+'s halten</div>'
+      +wdHtml
       +'<div class="stretch-routine-exs">'+exNames+'</div>'
       +'<div class="stretch-routine-btns">'
       +'<button class="stretch-btn-start" onclick="startRoutineSesh('+ri+')">▶ Starten</button>'
@@ -5587,6 +6118,27 @@ function renderStretchRoutines() {
       +'</div>';
   }).join('');
   document.getElementById('stretchRoutineList').innerHTML = html;
+}
+
+function toggleStretchRoutineWeekday(routineIdx, wd){
+  var r = stretchRoutines[routineIdx];
+  if(!r) return;
+  if(!r.weekdays) r.weekdays = [];
+  var i = r.weekdays.indexOf(wd);
+  if(i>=0) r.weekdays.splice(i, 1);
+  else r.weekdays.push(wd);
+  r.weekdays.sort();
+  saveState();
+  renderStretchRoutines();
+}
+
+// Find the first stretch routine assigned to a given weekday (0=Mon..6=Sun)
+function getStretchRoutineForWeekday(wd){
+  for(var i=0; i<stretchRoutines.length; i++){
+    var r = stretchRoutines[i];
+    if(r.weekdays && r.weekdays.indexOf(wd)!==-1) return i;
+  }
+  return -1;
 }
 
 // ── QUICK ROUTINES ──
@@ -6328,15 +6880,30 @@ function confirmDeleteSplitDirect(sk){
   document.getElementById('confirmOverlay').classList.remove('hidden');
 }
 
+function toggleStreakPlan(){
+  // Verify the active split has any weekdays
+  var split = SPLITS[activeSplit];
+  if(!split) return;
+  var hasWd = split.days.some(function(d){ return getDayWeekday(d)!==null; });
+  if(!hasWd){
+    showToast('⚠ Diesem Plan sind noch keine Wochentage zugewiesen');
+    return;
+  }
+  setStreakPlan(activeSplit);
+}
+
 function renderNav(){
+  var streakKey = getStreakPlan();
   var tabs = Object.keys(SPLITS).map(function(k){
     var isActive = k===activeSplit;
+    var isStreak = k===streakKey;
     var col = getSplitColor(k);
     var style = isActive
       ? 'color:'+col+';border-bottom-color:'+col+';'
       : 'color:var(--muted2);';
+    var streakStar = isStreak ? '<span title="Aktiver Streak-Plan" style="color:#FFB627;font-size:11px;margin-right:3px;">★</span>' : '';
     return '<button class="split-tab" style="'+style+'" onclick="selectSplit(\''+k+'\')">'
-      +SPLITS[k].name
+      +streakStar+SPLITS[k].name
       +(Object.keys(SPLITS).length>1?'<button class="split-nav-del" onclick="event.stopPropagation();confirmDeleteSplitDirect(\''+k+'\')" title="Löschen">✕</button>':'')
       +'</button>';
   }).join('');
@@ -6347,6 +6914,15 @@ function renderDays(){
   var split=SPLITS[activeSplit];
   document.getElementById('splitTitle').textContent=split.name;
   document.getElementById('splitDesc').textContent=split.desc;
+  // Update streak plan button
+  var streakBtn = document.getElementById('streakPlanBtn');
+  if(streakBtn){
+    var isStreak = getStreakPlan()===activeSplit;
+    streakBtn.textContent = isStreak ? '★' : '☆';
+    streakBtn.style.color = isStreak ? '#FFB627' : 'var(--muted)';
+    streakBtn.style.borderColor = isStreak ? '#FFB627' : 'var(--border2)';
+    streakBtn.title = isStreak ? 'Aktiver Streak-Plan' : 'Als Streak-Plan setzen';
+  }
   var days=split.days;
   var canDelete=days.filter(function(d){return d.tags.indexOf('rest')===-1;}).length>1;
   var cards=days.map(function(day,i){
@@ -6399,6 +6975,7 @@ function confirmDeleteDay(di){
 function doDeleteDayDirect(){
   var days=SPLITS[activeSplit].days;
   if(pendingDeleteDi<0||pendingDeleteDi>=days.length){closeConfirm();return;}
+  savePlanSnapshot('Vor Tag-Löschung');
   days.splice(pendingDeleteDi,1);
   if(activeDay>=days.length) activeDay=days.length-1;
   var found=false;
@@ -6417,6 +6994,17 @@ function toggleDetailEdit(){
   // scroll to panel
   var p=document.getElementById('detailPanel');
   if(p) setTimeout(function(){ p.scrollIntoView({behavior:'smooth',block:'nearest'}); },50);
+}
+
+function setDetailDayWeekday(wd){
+  var day = SPLITS[activeSplit].days[activeDay];
+  if(!day) return;
+  savePlanSnapshot('Vor Wochentag-Änderung');
+  setDayWeekday(day, wd);
+  saveState();
+  renderNav();
+  renderDays();
+  renderDetail();
 }
 
 // ── EXERCISE EDIT OVERLAY ──
@@ -6685,7 +7273,27 @@ function renderDetail(){
   var addFormHtml = detailEditMode ?
     '<button class="inline-add-btn" onclick="openLibOv(\'pick\')">📚 Aus Bibliothek hinzufügen</button>' : '';
 
+  // Weekday selector (only visible in edit mode)
+  var weekdayHtml = '';
+  if(detailEditMode){
+    var curWd = getDayWeekday(day);
+    weekdayHtml = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.6rem .75rem;margin-bottom:.75rem;">'
+      +'<div style="font-size:10px;color:var(--muted);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;">📅 Wochentag</div>'
+      +'<div style="display:flex;gap:4px;flex-wrap:wrap;">';
+    for(var w=0; w<7; w++){
+      var active = curWd===w;
+      weekdayHtml += '<button onclick="setDetailDayWeekday('+w+')" style="flex:1;min-width:36px;padding:.4rem .2rem;font-family:\'Barlow Condensed\',sans-serif;font-size:12px;font-weight:700;letter-spacing:.04em;border-radius:5px;cursor:pointer;min-height:34px;'
+        +'border:1px solid '+(active?'var(--accent)':'var(--border2)')+';'
+        +'background:'+(active?'var(--accent2)':'var(--bg3)')+';'
+        +'color:'+(active?'var(--accent)':'var(--muted)')+';">'
+        +WEEKDAY_SHORT[w]+'</button>';
+    }
+    weekdayHtml += '<button onclick="setDetailDayWeekday(null)" title="Wochentag entfernen" style="padding:.4rem .5rem;font-family:\'Barlow Condensed\',sans-serif;font-size:12px;font-weight:700;border-radius:5px;cursor:pointer;min-height:34px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted3);">✕</button>';
+    weekdayHtml += '</div></div>';
+  }
+
   var mainHtml='<div class="phase"><div class="phase-lbl main">'+(is5er?'Haupttraining — 45 min':'Training')+'</div>'
+    +weekdayHtml
     +exRows
     +addFormHtml
     +'</div>';
@@ -6721,41 +7329,7 @@ function renderDetail(){
 function shuffleDay(){
   var day = SPLITS[activeSplit].days[activeDay];
   if(day.tags && day.tags.indexOf('rest') !== -1) return;
-  if(!day.main || !day.main.length){ showToast('Keine Übungen zum Ersetzen'); return; }
-
-  var currentNames = day.main.map(function(e){ return e.name; });
-
-  day.main = day.main.map(function(ex){
-    // Find the muscle keyword from this exercise
-    var muscle = (ex.muscle || '').toLowerCase();
-    var cat = ex.cat || classifyMuscle(ex.name);
-
-    // Keywords derived from muscle string
-    var kws = muscle.split(/[,\/\s]+/).filter(function(w){ return w.length > 3; });
-
-    // Try to find a replacement with same muscle keywords, different exercise
-    var candidate = null;
-    for(var k=0; k<kws.length; k++){
-      var picks = pickFromLibrary(cat, [kws[k]], 1, currentNames);
-      if(picks.length){ candidate = picks[0]; break; }
-    }
-    // Fallback: same category, different exercise
-    if(!candidate){
-      var picks2 = pickFromLibrary(cat, [], 1, currentNames);
-      if(picks2.length) candidate = picks2[0];
-    }
-
-    if(candidate){
-      currentNames.push(candidate.name);
-      return makeExObj(candidate);
-    }
-    return ex; // keep original if nothing found
-  });
-
-  detailEditMode = false;
-  saveState();
-  renderDetail();
-  showToast('🔀 Übungen ersetzt!');
+  openShuffle('day');
 }
 
 var SHUF_DAY_TYPES = [
@@ -6865,6 +7439,104 @@ function exportData(){
   }
 }
 
+function exportPlanOnly(){
+  try {
+    if(!SPLITS || Object.keys(SPLITS).length === 0){
+      showToast('Keine Pläne zum Exportieren');
+      return;
+    }
+    var date = new Date();
+    var stamp = date.getFullYear()+'-'
+      +String(date.getMonth()+1).padStart(2,'0')+'-'
+      +String(date.getDate()).padStart(2,'0');
+    var filename = 'bioforce-plan-'+stamp+'.json';
+    var payload = {
+      type: 'bioforce-plan',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      SPLITS: SPLITS
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Plan exportiert: '+filename);
+  } catch(e){
+    showToast('Export fehlgeschlagen: '+e.message);
+  }
+}
+
+function importPlanOnly(event){
+  var file = event.target.files[0];
+  if(!file) return;
+  var input = event.target;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var data = JSON.parse(e.target.result);
+      // Accept either { SPLITS: {...} } or a raw SPLITS object
+      var newSplits = null;
+      if(data.SPLITS && typeof data.SPLITS === 'object'){
+        newSplits = data.SPLITS;
+      } else if(data && typeof data === 'object' && !Array.isArray(data)){
+        // Maybe raw splits object — check for at least one key with .days
+        var keys = Object.keys(data);
+        var looksLikeSplits = keys.length > 0 && keys.every(function(k){
+          return data[k] && Array.isArray(data[k].days);
+        });
+        if(looksLikeSplits) newSplits = data;
+      }
+      if(!newSplits){
+        showToast('⚠ Ungültige Plan-Datei');
+        input.value = '';
+        return;
+      }
+      // Count plans and days for confirmation
+      var planCount = Object.keys(newSplits).length;
+      var dayCount = 0;
+      Object.keys(newSplits).forEach(function(k){
+        if(newSplits[k].days) dayCount += newSplits[k].days.length;
+      });
+      document.getElementById('confirmTitle').textContent = 'Plan importieren?';
+      document.getElementById('confirmMsg').textContent =
+        planCount+' Plan'+(planCount===1?'':'¨e')+' mit '+dayCount+' Tagen werden geladen. Deine Trainingshistorie, PRs, Videos und alle anderen Daten bleiben unverändert.';
+      document.getElementById('confirmYesBtn').onclick = function(){
+        savePlanSnapshot('Vor Plan-Import');
+        SPLITS = deepClone(newSplits);
+        // Make sure activeSplit still valid
+        if(!SPLITS[activeSplit]){
+          activeSplit = Object.keys(SPLITS)[0];
+          activeDay = 0;
+        } else {
+          // Make sure activeDay still valid
+          if(activeDay >= SPLITS[activeSplit].days.length){
+            activeDay = 0;
+          }
+        }
+        heatmapActiveSplit = activeSplit;
+        if(typeof migrateSplitMuscles === 'function') migrateSplitMuscles();
+        saveState();
+        closeConfirm();
+        renderNav();
+        renderDays();
+        showToast('✓ Plan erfolgreich importiert!');
+        input.value = '';
+      };
+      var noBtn = document.getElementById('confirmNoBtn');
+      if(noBtn) noBtn.onclick = function(){ closeConfirm(); input.value = ''; };
+      document.getElementById('confirmOverlay').classList.remove('hidden');
+    } catch(err){
+      showToast('⚠ Datei kann nicht gelesen werden');
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
 function importData(event){
   var file = event.target.files[0];
   if(!file) return;
@@ -6922,6 +7594,140 @@ function renderSettingsInfo(){
 }
 
 var SAVE_KEY = 'bioforce_v1';
+var PLAN_HISTORY_KEY = 'bioforce_plan_history';
+var PLAN_HISTORY_MAX = 10;
+
+function savePlanSnapshot(label){
+  try {
+    if(!SPLITS || Object.keys(SPLITS).length === 0) return;
+    var raw = localStorage.getItem(PLAN_HISTORY_KEY);
+    var hist = raw ? JSON.parse(raw) : [];
+    var snap = {
+      ts: Date.now(),
+      label: label || 'Änderung',
+      SPLITS: deepClone(SPLITS),
+      activeSplit: activeSplit,
+      activeDay: activeDay
+    };
+    hist.unshift(snap);
+    if(hist.length > PLAN_HISTORY_MAX) hist = hist.slice(0, PLAN_HISTORY_MAX);
+    localStorage.setItem(PLAN_HISTORY_KEY, JSON.stringify(hist));
+  } catch(e){ /* localStorage full or unavailable */ }
+}
+
+function getPlanHistory(){
+  try {
+    var raw = localStorage.getItem(PLAN_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e){ return []; }
+}
+
+function restorePlanSnapshot(idx){
+  var hist = getPlanHistory();
+  if(idx < 0 || idx >= hist.length) return;
+  var snap = hist[idx];
+  if(!snap || !snap.SPLITS) return;
+  // Save current state as a snapshot first (so the restore itself is undoable)
+  savePlanSnapshot('Vor Wiederherstellung');
+  SPLITS = deepClone(snap.SPLITS);
+  if(SPLITS[snap.activeSplit]){
+    activeSplit = snap.activeSplit;
+    if(snap.activeDay < SPLITS[activeSplit].days.length){
+      activeDay = snap.activeDay;
+    } else {
+      activeDay = 0;
+    }
+  } else {
+    activeSplit = Object.keys(SPLITS)[0];
+    activeDay = 0;
+  }
+  heatmapActiveSplit = activeSplit;
+  saveState();
+  renderNav();
+  renderDays();
+  renderPlanHistory();
+  showToast('✓ Plan wiederhergestellt');
+}
+
+function deletePlanSnapshot(idx){
+  var hist = getPlanHistory();
+  if(idx < 0 || idx >= hist.length) return;
+  hist.splice(idx, 1);
+  localStorage.setItem(PLAN_HISTORY_KEY, JSON.stringify(hist));
+  renderPlanHistory();
+}
+
+function formatSnapTime(ts){
+  var d = new Date(ts);
+  var now = new Date();
+  var sameDay = d.toDateString() === now.toDateString();
+  var pad = function(n){ return n<10 ? '0'+n : n; };
+  var time = pad(d.getHours())+':'+pad(d.getMinutes());
+  if(sameDay) return 'Heute, '+time;
+  var yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  if(d.toDateString() === yesterday.toDateString()) return 'Gestern, '+time;
+  return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'. '+time;
+}
+
+function renderPlanHistory(){
+  var container = document.getElementById('planHistList');
+  if(!container) return;
+  var hist = getPlanHistory();
+  if(!hist.length){
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted3);text-align:center;padding:.75rem;">Noch keine Sicherungen vorhanden</div>';
+    return;
+  }
+  var html = '';
+  hist.forEach(function(snap, idx){
+    var planCount = Object.keys(snap.SPLITS || {}).length;
+    var dayCount = 0;
+    var exCount = 0;
+    Object.keys(snap.SPLITS || {}).forEach(function(k){
+      var sp = snap.SPLITS[k];
+      if(sp.days){
+        dayCount += sp.days.length;
+        sp.days.forEach(function(d){ if(d.main) exCount += d.main.length; });
+      }
+    });
+    html += '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:.6rem .75rem;margin-bottom:.4rem;display:flex;align-items:center;gap:8px;">';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;">'+escapeHtml(snap.label||'Änderung')+'</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px;">'+formatSnapTime(snap.ts)+' · '+planCount+' Plan'+(planCount===1?'':'¨e')+' · '+exCount+' Übungen</div>';
+    html += '</div>';
+    html += '<button onclick="confirmRestoreSnapshot('+idx+')" title="Wiederherstellen" style="background:var(--accent2);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-size:14px;cursor:pointer;width:36px;height:36px;flex-shrink:0;">↺</button>';
+    html += '<button onclick="deletePlanSnapshot('+idx+')" title="Löschen" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted3);font-size:14px;cursor:pointer;width:36px;height:36px;flex-shrink:0;">✕</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function confirmRestoreSnapshot(idx){
+  var hist = getPlanHistory();
+  if(idx < 0 || idx >= hist.length) return;
+  var snap = hist[idx];
+  document.getElementById('confirmTitle').textContent = 'Plan wiederherstellen?';
+  document.getElementById('confirmMsg').textContent =
+    'Der Plan-Stand von "'+(snap.label||'Änderung')+'" ('+formatSnapTime(snap.ts)+') wird wiederhergestellt. Der aktuelle Plan wird vorher automatisch gesichert.';
+  var yesBtn = document.getElementById('confirmYesBtn');
+  var originalText = yesBtn.textContent;
+  yesBtn.textContent = 'Wiederherstellen';
+  yesBtn.onclick = function(){
+    closeConfirm();
+    yesBtn.textContent = originalText;
+    restorePlanSnapshot(idx);
+  };
+  // Reset text when the cancel button is pressed
+  var noBtn = document.querySelector('#confirmOverlay .confirm-no');
+  if(noBtn){
+    var origClick = noBtn.onclick;
+    noBtn.onclick = function(){
+      yesBtn.textContent = originalText;
+      closeConfirm();
+    };
+  }
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+}
+
 function saveState(){
   try{
     var data={
@@ -6935,7 +7741,8 @@ function saveState(){
       activeDay: activeDay,
       currentPauseSec: currentPauseSec,
       stretchRoutines: stretchRoutines,
-      activityLog: activityLog
+      activityLog: activityLog,
+      streakActivePlan: streakActivePlan
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){ console.warn('Save failed',e); }
@@ -7063,6 +7870,7 @@ function loadState(){
     if(data.currentPauseSec) currentPauseSec=data.currentPauseSec;
     if(data.stretchRoutines) stretchRoutines=data.stretchRoutines;
     if(data.activityLog) activityLog=data.activityLog;
+    if(data.streakActivePlan && SPLITS[data.streakActivePlan]) streakActivePlan = data.streakActivePlan;
     return true;
   }catch(e){ console.warn('Load failed',e); return false; }
 }
@@ -7620,10 +8428,21 @@ function setVideoTag(t){ _videoActiveTag = t; renderVideoPage(); }
 function openVideoDetail(idx){
   var v = videos[idx];
   if(!v) return;
-  // Directly open YouTube in browser (werbeblocker in Firefox works)
   if(v.youtubeId){
-    window.open('https://www.youtube.com/watch?v='+v.youtubeId, '_blank');
-    return;
+    var ytUrl = 'https://www.youtube.com/watch?v='+v.youtubeId;
+    // Android intent: force external browser instead of PWA
+    var intentUrl = 'intent://www.youtube.com/watch?v='+v.youtubeId+
+      '#Intent;scheme=https;action=android.intent.action.VIEW;'+
+      'S.browser_fallback_url='+encodeURIComponent(ytUrl)+';end';
+    var a = document.createElement('a');
+    // Try intent first (Android), fallback to noreferrer for other platforms
+    var isAndroid = /Android/i.test(navigator.userAgent);
+    a.href = isAndroid ? intentUrl : ytUrl;
+    a.target = '_blank';
+    a.rel = 'noreferrer noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 }
 
@@ -8004,6 +8823,43 @@ function m3dGetPlanVolume(){
   });
   return vol;
 }
+
+function m3dGetWeekDoneVolume(){
+  var vol={};
+  Object.keys(M3D_MUSCLES).forEach(function(k){vol[k]=0;});
+  // Calculate Monday & Sunday of current week
+  var now=new Date();
+  var dow=now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+  var daysFromMon=(dow===0?6:dow-1);
+  var monday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-daysFromMon,0,0,0,0);
+  var sunday=new Date(monday.getFullYear(),monday.getMonth(),monday.getDate()+6,23,59,59,999);
+  trainingLog.forEach(function(entry){
+    var d=new Date(entry.date);
+    if(d<monday||d>sunday) return;
+    // Get the day from the plan to know the sets per exercise
+    var split=SPLITS[entry.sk];
+    if(!split||!split.days||!split.days[entry.di]) return;
+    var planDay=split.days[entry.di];
+    (entry.exs||[]).forEach(function(loggedEx){
+      // Find matching exercise in plan to get muscle and sets info
+      var planEx=null;
+      (planDay.main||[]).forEach(function(pe){
+        if(pe.name===loggedEx.name) planEx=pe;
+      });
+      if(!planEx) return;
+      var muscles=(planEx.muscle||'').split(',');
+      var sets=(planEx.sets||3);
+      muscles.forEach(function(ms,idx){
+        var name=ms.trim();
+        var k=M3D_PLAN_MAP[name];
+        if(!k) return;
+        var weight = idx===0 ? 1.0 : 0.3;
+        vol[k]=(vol[k]||0)+(sets*weight);
+      });
+    });
+  });
+  return vol;
+}
 function m3dHeatRgb(ratio){
   if(ratio<0.15) return [255,200,200];
   if(ratio<0.40) return [230,60,60];
@@ -8171,16 +9027,24 @@ function m3dRenderList(vol,mx){
   if(!mx){var vals=Object.keys(vol).map(function(k){return vol[k];});mx=Math.max.apply(null,vals)||1;}
   var list=document.getElementById('muscleIntensityList');
   if(!list)return;
+  var done=m3dGetWeekDoneVolume();
   var entries=Object.keys(M3D_MUSCLES).map(function(k){
-    return{key:k,label:M3D_MUSCLES[k],val:vol[k]||0};
+    return{key:k,label:M3D_MUSCLES[k],val:vol[k]||0,doneVal:done[k]||0};
   }).sort(function(a,b){return b.val-a.val;});
   list.innerHTML=entries.map(function(e){
     var ratio=e.val/mx;
     var col=m3dHeatHex(ratio);
     var pct=Math.round(ratio*100);
+    // Week progress: done / planned * 100
+    var weekPct=e.val>0 ? Math.round((e.doneVal/e.val)*100) : 0;
+    var weekColor=weekPct>=100?'#5BAD7A':weekPct>=50?'#d8b04a':'var(--muted)';
+    var weekLabel=e.val>0 ? weekPct+'%' : '–';
     return '<div style="display:flex;align-items:center;gap:7px;padding:.45rem .65rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
       +'<div style="width:10px;height:10px;border-radius:50%;background:'+col+';flex-shrink:0;border:1px solid #555;"></div>'
-      +'<div style="flex:1;font-size:12px;color:var(--text2);">'+e.label+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.2;">'+e.label+'</div>'
+      +'<div style="font-size:9px;color:'+weekColor+';font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.04em;margin-top:1px;">📅 '+weekLabel+'</div>'
+      +'</div>'
       +'<div style="font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:'+(ratio>0?col:'var(--muted3)')+';">'+pct+'%</div>'
       +'</div>';
   }).join('');
@@ -8190,6 +9054,7 @@ checkPlanChangeReminder();
 loadExercisesFromGitHub();
 loadVideosFromGitHub();
 checkResumeSession();
+renderHomeStreak();
 // Start on home page
 document.getElementById('planPage').style.display = 'none';
 document.getElementById('appHeader').style.display = 'none';
