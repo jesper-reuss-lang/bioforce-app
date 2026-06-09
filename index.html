@@ -2397,22 +2397,26 @@ function selectWup(type) {
 function renderWupStretchInfo(){
   var container = document.getElementById('wupStretchInfo');
   if(!container) return;
-  var todayWd = jsDowToIso(new Date().getDay());
-  var idx = getStretchRoutineForWeekday(todayWd);
+  // Use the PLAN DAY's weekday, not today's real date
+  var planDay = SPLITS[activeSplit] && SPLITS[activeSplit].days[activeDay];
+  var planWd = planDay ? getDayWeekday(planDay) : null;
+  var idx = (planWd !== null) ? getStretchRoutineForWeekday(planWd) : -1;
   if(idx < 0){
+    var dayLabel = planWd !== null ? WEEKDAY_NAMES[planWd] : (planDay ? planDay.name : 'Heute');
     container.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:.55rem .75rem;display:flex;align-items:center;gap:10px;">'
       +'<div style="font-size:18px;color:var(--muted3);">⊘</div>'
-      +'<div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;color:var(--muted);">Keine Routine für '+WEEKDAY_NAMES[todayWd]+'</div>'
+      +'<div style="flex:1;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;color:var(--muted);">Keine Routine für '+escapeHtml(dayLabel)+'</div>'
       +'<div style="font-size:10px;color:var(--muted3);">Weise auf der Dehnen-Seite eine Routine zu</div></div>'
       +'</div>';
     return;
   }
   var r = stretchRoutines[idx];
   var exCount = (r.exIds||[]).length;
+  var dayLabel2 = planWd !== null ? WEEKDAY_NAMES[planWd] : '';
   container.innerHTML = '<div style="background:var(--accent2);border:1px solid var(--accent);border-radius:7px;padding:.55rem .75rem;display:flex;align-items:center;gap:10px;">'
     +'<div style="font-size:18px;">🧘</div>'
     +'<div style="flex:1;min-width:0;"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:13px;font-weight:700;letter-spacing:.03em;color:var(--accent);">'+escapeHtml(r.name||'Routine')+'</div>'
-    +'<div style="font-size:10px;color:var(--muted);">'+exCount+' Übung'+(exCount===1?'':'en')+' · '+(r.holdSec||45)+' Sek halten · '+WEEKDAY_NAMES[todayWd]+'</div></div>'
+    +'<div style="font-size:10px;color:var(--muted);">'+exCount+' Übung'+(exCount===1?'':'en')+' · '+(r.holdSec||45)+' Sek halten'+(dayLabel2?' · '+dayLabel2:'')+'</div></div>'
     +'</div>';
 }
 
@@ -2484,9 +2488,10 @@ function confirmWup(){
   wv.classList.add('hidden');
   if(wasOpen) navPopOverlay();
   var dur = parseInt(document.getElementById('wupDuration').value) || 10;
-  // Auto-pick stretch routine for today's weekday
-  var todayWd = jsDowToIso(new Date().getDay());
-  var stretchIdx = getStretchRoutineForWeekday(todayWd);
+  // Use the PLAN DAY's weekday to find the correct stretch routine
+  var planDay = SPLITS[activeSplit] && SPLITS[activeSplit].days[activeDay];
+  var planWd = planDay ? getDayWeekday(planDay) : null;
+  var stretchIdx = (planWd !== null) ? getStretchRoutineForWeekday(planWd) : -1;
   startTrainingWithWarmup(selectedWupType, dur, stretchIdx);
 }
 
